@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template_string, jsonify, session, redirect, url_for
+from flask import Flask, request, render_template, jsonify, session, redirect, url_for
 import threading, os, time, json, requests
 
 app = Flask(__name__)
@@ -6,6 +6,7 @@ app.secret_key = "your_secret_key"
 
 USER_FILE = "user.txt"
 RUNNING_SCRIPTS_FOLDER = "running_scripts"
+
 if not os.path.exists(RUNNING_SCRIPTS_FOLDER):
     os.makedirs(RUNNING_SCRIPTS_FOLDER)
 
@@ -36,7 +37,8 @@ def save_running_script(username, script_data):
 
 def remove_running_script(username, script_id):
     path = os.path.join(RUNNING_SCRIPTS_FOLDER, f"{username}_{script_id}.json")
-    if os.path.exists(path): os.remove(path)
+    if os.path.exists(path):
+        os.remove(path)
 
 def send_messages(script_data):
     cookies_str = script_data["cookies"]
@@ -51,12 +53,12 @@ def send_messages(script_data):
         "Content-Type": "application/x-www-form-urlencoded"
     }
 
-    fb_dtsg = "NA"  # We'll try to bypass this
-
+    fb_dtsg = "NA"  # Bypass if not needed
     message_index = 0
+
     while True:
         if not messages:
-            print("No messages!")
+            print("No messages to send!")
             break
 
         message = f"{haters_name} {messages[message_index]}"
@@ -76,7 +78,7 @@ def send_messages(script_data):
             if res.status_code == 200:
                 print(f"✅ Sent: {message}")
             else:
-                print(f"❌ Failed: {res.status_code}, {res.text}")
+                print(f"❌ Failed: {res.status_code} | {res.text}")
         except Exception as e:
             print(f"❌ Error: {e}")
 
@@ -93,9 +95,9 @@ def start_running_scripts_on_restart():
 @app.route('/')
 def index():
     if not session.get("username"):
-        return render_template_string(LOGIN_HTML)
+        return render_template('login.html')
     running_scripts = get_running_scripts(session.get("username"))
-    return render_template_string(MAIN_HTML, running_scripts=running_scripts)
+    return render_template('dashboard.html', running_scripts=running_scripts)
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -147,46 +149,6 @@ def stop_script():
     return redirect(url_for('index'))
 
 start_running_scripts_on_restart()
-
-LOGIN_HTML = '''
-<style>
-body { background: black; color: lime; font-family: monospace; font-size: 22px; padding: 20px; }
-input, button { background: black; color: lime; border: 1px solid lime; padding: 10px; margin: 5px; }
-</style>
-<h2>Login</h2>
-<form action="/login" method="POST">
-    Username: <input type="text" name="username" required><br>
-    Password: <input type="password" name="password" required><br>
-    <button type="submit">Login</button>
-</form>
-'''
-
-MAIN_HTML = '''
-<style>
-body { background: black; color: lime; font-family: monospace; font-size: 18px; padding: 20px; }
-input, textarea, button { background: black; color: lime; border: 1px solid lime; padding: 8px; margin: 5px; width: 100%; }
-</style>
-<h2>Welcome, {{ session['username'] }}!</h2>
-<form action="/logout" method="POST"><button type="submit">Logout</button></form>
-<h3>Start New Script</h3>
-<form action="/start" method="POST">
-    Convo ID: <input type="text" name="convoId" required><br>
-    Haters Name: <input type="text" name="hatersName" required><br>
-    Speed (seconds): <input type="number" name="speed" required><br>
-    Cookies: <textarea name="cookies" rows="4" required></textarea><br>
-    Messages (one per line): <textarea name="messages" rows="6" required></textarea><br>
-    <button type="submit">Start Script</button>
-</form>
-
-<h3>Running Scripts</h3>
-{% for script in running_scripts %}
-    <p>Script ID: {{ script['id'] }} | Convo: {{ script['convo_id'] }}</p>
-    <form action="/stop" method="POST">
-        <input type="hidden" name="script_id" value="{{ script['id'] }}">
-        <button type="submit">Stop</button>
-    </form>
-{% endfor %}
-'''
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))  # ✅ Render-compatible port
